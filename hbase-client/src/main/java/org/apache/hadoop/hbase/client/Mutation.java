@@ -796,6 +796,12 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
     }
   }
 
+  /**
+   * 在这个mutation的cell集合中加入新的cell
+   * @param cell
+   * @return
+   * @throws IOException
+   */
   Mutation add(Cell cell) throws IOException {
     //Checking that the row of the kv is the same as the mutation
     // TODO: It is fraught with risk if user pass the wrong row.
