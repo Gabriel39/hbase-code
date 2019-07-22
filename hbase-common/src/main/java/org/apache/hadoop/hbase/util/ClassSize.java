@@ -162,6 +162,7 @@ public class ClassSize {
 
     /**
      * Aligns a number to 8.
+     * 用来做对齐， 对齐到8的倍数
      * @param num number to align to 8
      * @return smallest number &gt;= input that is a multiple of 8
      */

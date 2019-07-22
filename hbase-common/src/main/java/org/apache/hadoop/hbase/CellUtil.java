@@ -709,6 +709,7 @@ public final class CellUtil {
 
   /**
    * Flatten the map of cells out under the CellScanner
+   * 用CellScanner封装map，把扫描得到的cell的list作为结果返回
    * @param map Map of Cell Lists; for example, the map of families to Cells that is used inside
    *          Put, etc., keeping Cells organized by family.
    * @return CellScanner interface over <code>cellIterable</code>

@@ -84,6 +84,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
 
   /**
    * The attribute for storing the list of clusters that have consumed the change.
+   * 这个mutation操作针对的集群的id
    */
   private static final String CONSUMED_CLUSTER_IDS = "_cs.id";
 
@@ -96,6 +97,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
 
   // TODO: row should be final
   protected byte [] row = null;
+  // ts是时间戳，当不指定时间戳时默认为最大，例如查询时不指定时间戳，则查询所有比最大时间戳小的，即所有
   protected long ts = HConstants.LATEST_TIMESTAMP;
   protected Durability durability = Durability.USE_DEFAULT;
 
@@ -106,11 +108,16 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
   /**
    * empty construction.
    * We need this empty construction to keep binary compatibility.
+   * 初始化familymap并且使用针对二进制的比较器
    */
   protected Mutation() {
     this.familyMap = new TreeMap<>(Bytes.BYTES_COMPARATOR);
   }
 
+  /**
+   * 这个构造函数用来从另一个mutation复制
+   * @param clone
+   */
   protected Mutation(Mutation clone) {
     super(clone);
     this.row = clone.getRow();
@@ -136,6 +143,10 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
     this.familyMap = Preconditions.checkNotNull(familyMap);
   }
 
+  /**
+   * 返回扫描得到的结果，原始结果是个navigablemap，封装成一个cellscanner
+   * @return
+   */
   @Override
   public CellScanner cellScanner() {
     return CellUtil.createCellScanner(getFamilyCellMap());
@@ -144,6 +155,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
   /**
    * Creates an empty list if one doesn't exist for the given column family
    * or else it returns the associated list of Cell objects.
+   * 返回一个指定family的cell list
    *
    * @param family column family
    * @return a list of Cell objects, returns an empty list if one doesn't exist.
@@ -168,6 +180,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
 
   /**
    * Create a KeyValue with this objects row key and the Put identifier.
+   * 和上面方法不同之处在于加入了tag数组，tag数组是为了标示kv的一些信息例如ACL信息
    * @param family
    * @param qualifier
    * @param ts
@@ -196,6 +209,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
    * Compile the column family (i.e. schema) information
    * into a Map. Useful for parsing and aggregation by debugging,
    * logging, and administration tools.
+   * 返回一个map，map的key是families，value是一个字符串列表，字符串是familyMap的key即family
    * @return Map
    */
   @Override
@@ -215,6 +229,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
    * Compile the details beyond the scope of getFingerprint (row, columns,
    * timestamps, etc.) into a Map along with the fingerprinted information.
    * Useful for debugging, logging, and administration tools.
+   * 获得比getFingerprint方法更多的信息，包括qual，tag，时间戳等
    * @param maxCols a limit on the number of columns output prior to truncation
    * @return Map
    */
@@ -475,6 +490,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
   }
 
   /**
+   * 计算占用的堆大小
    * @return Calculate what Mutation adds to class heap size.
    */
   @Override
@@ -580,6 +596,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
 
   /**
    * Subclasses should override this method to add the heap size of their own fields.
+   * 子类通过这个方法增加自己占用的堆大小
    * @return the heap size to add (will be aligned).
    */
   protected long extraHeapSize(){
