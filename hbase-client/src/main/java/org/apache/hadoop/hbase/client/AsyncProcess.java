@@ -78,6 +78,9 @@ import org.apache.hadoop.hbase.util.Bytes;
  * Internally, this class works with {@link Row}, this mean it could be theoretically used for
  * gets as well.
  * </p>
+ *
+ * 这个类维护一个异步请求队列，默认队列最大100，对于每一个请求，如果失败则会进行重试
+ * 在重试过程中，重试的时间间隔会线性增大
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -161,6 +164,14 @@ class AsyncProcess {
   public static final String LOG_DETAILS_PERIOD = "hbase.client.log.detail.period.ms";
   private static final int DEFAULT_LOG_DETAILS_PERIOD = 10000;
   private final int periodToLog;
+
+  /**
+   * 构造函数，定义了许多在异步过程中的参数
+   * @param hc
+   * @param conf
+   * @param rpcCaller
+   * @param rpcFactory
+   */
   AsyncProcess(ClusterConnection hc, Configuration conf,
       RpcRetryingCallerFactory rpcCaller, RpcControllerFactory rpcFactory) {
     if (hc == null) {
@@ -211,6 +222,9 @@ class AsyncProcess {
   /**
    * The submitted task may be not accomplished at all if there are too many running tasks or
    * other limits.
+   *
+   * 提交任务
+   *
    * @param <CResult> The class to cast the result
    * @param task The setting and data
    * @return AsyncRequestFuture
@@ -236,6 +250,10 @@ class AsyncProcess {
    * list. Does not send requests to replicas (not currently used for anything other
    * than streaming puts anyway).
    *
+   * 提交任务，任务中包含一系列对行的操作，基本思想是遍历所有的行，检查每一行的状态，
+   * 如果是include即服务端接受，则加入一个执行队列，如果在根据row查找location的时候报错，
+   * 则直接跳出遍历，最后把执行队列中的action提交执行
+   *
    * @param task The setting and data
    * @param atLeastOne true if we should submit at least a subset.
    */
@@ -246,6 +264,8 @@ class AsyncProcess {
     Map<ServerName, MultiAction> actionsByServer = new HashMap<>();
     List<Action> retainedActions = new ArrayList<>(rows.size());
 
+    // nonce生成器的作用是用来nonce，而nonce的作用是用一个id标识同一个请求，
+    // 所以在网络不好时，用户端重试的请求不会被服务端重复接收
     NonceGenerator ng = this.connection.getNonceGenerator();
     long nonceGroup = ng.getNonceGroup(); // Currently, nonce group is per entire client.
 
@@ -256,12 +276,14 @@ class AsyncProcess {
     boolean firstIter = true;
     do {
       // Wait until there is at least one slot for a new task.
+      // 为一个新任务分配一个slot
       requestController.waitForFreeSlot(id, periodToLog, getLogger(tableName, -1));
       int posInList = -1;
       if (!firstIter) {
         checker.reset();
       }
       Iterator<? extends Row> it = rows.iterator();
+      // 遍历这个任务中提交的所有 T extends Row
       while (it.hasNext()) {
         Row r = it.next();
         HRegionLocation loc;
@@ -270,14 +292,17 @@ class AsyncProcess {
             throw new IllegalArgumentException("#" + id + ", row cannot be null");
           }
           // Make sure we get 0-s replica.
+          // 查询得到这一行所在的所有region的位置
           RegionLocations locs = connection.locateRegion(
               tableName, r.getRow(), true, true, RegionReplicaUtil.DEFAULT_REPLICA_ID);
           if (locs == null || locs.isEmpty() || locs.getDefaultRegionLocation() == null) {
             throw new IOException("#" + id + ", no location found, aborting submit for"
                 + " tableName=" + tableName + " rowkey=" + Bytes.toStringBinary(r.getRow()));
           }
+          // 获取众多region中的其中一个
           loc = locs.getDefaultRegionLocation();
         } catch (IOException ex) {
+          // 如果寻找location失败，则记录报错信息并跳出循环
           locationErrors = new ArrayList<>(1);
           locationErrorRows = new ArrayList<>(1);
           LOG.error("Failed to get region location ", ex);
@@ -288,6 +313,7 @@ class AsyncProcess {
           if (r instanceof Mutation) {
             priority = ((Mutation) r).getPriority();
           }
+          // 在出现定位失败的时候在retainedActions中加入这个报错的action并在相关信息的集合中加入信息
           retainedActions.add(new Action(r, ++posInList, priority));
           locationErrors.add(ex);
           locationErrorRows.add(posInList);
@@ -299,6 +325,7 @@ class AsyncProcess {
           break;
         }
         if (code == ReturnCode.INCLUDE) {
+          // 状态为INCLUDE时代表接受这一行的操作，加入执行队列
           int priority = HConstants.NORMAL_QOS;
           if (r instanceof Mutation) {
             priority = ((Mutation) r).getPriority();
@@ -321,6 +348,17 @@ class AsyncProcess {
         locationErrors, locationErrorRows, actionsByServer);
   }
 
+  /**
+   * 提交执行actions的函数，如果有location错误则记录并返回，并且执行可执行的队列
+   * @param task
+   * @param retainedActions
+   * @param nonceGroup
+   * @param locationErrors
+   * @param locationErrorRows
+   * @param actionsByServer
+   * @param <CResult>
+   * @return
+   */
   <CResult> AsyncRequestFuture submitMultiActions(AsyncProcessTask task,
       List<Action> retainedActions, long nonceGroup, List<Exception> locationErrors,
       List<Integer> locationErrorRows, Map<ServerName, MultiAction> actionsByServer) {
@@ -340,6 +378,7 @@ class AsyncProcess {
 
   /**
    * Helper that is used when grouping the actions per region server.
+   * 为每一个region server组织一系列的action
    *
    * @param server - server
    * @param regionName - regionName
@@ -364,6 +403,7 @@ class AsyncProcess {
   /**
    * Submit immediately the list of rows, whatever the server status. Kept for backward
    * compatibility: it allows to be used with the batch interface that return an array of objects.
+   * 相比于submit，这个方法不做任何检查，直接把任务中的每个操作都全部提交
    * @param task The setting and data
    */
   private <CResult> AsyncRequestFuture submitAll(AsyncProcessTask task) {

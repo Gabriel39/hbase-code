@@ -153,6 +153,8 @@ public interface Table extends Closeable {
    * Get in the same {@link #batch} call, you will not necessarily be
    * guaranteed that the Get returns what the Put had put.
    *
+   * 批量处理一批操作，注意这里不能保证操作的顺序
+   *
    * @param actions list of Get, Put, Delete, Increment, Append, RowMutations.
    * @param results Empty Object[], same size as actions. Provides access to partial
    *                results, in case an exception is thrown. A null in the result array means that
@@ -168,6 +170,7 @@ public interface Table extends Closeable {
 
   /**
    * Same as {@link #batch(List, Object[])}, but with a callback.
+   * 相比于batch方法。要多一个callback
    * @since 0.96.0
    */
   default <R> void batchCallback(

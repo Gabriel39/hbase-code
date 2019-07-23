@@ -23,6 +23,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.yetus.audience.InterfaceAudience;
 
+/**
+ * mutation如果不可变，底层的cell用的都是这个类而不是cell
+ */
 @InterfaceAudience.Private
 public class IndividualBytesFieldCell implements ExtendedCell, Cloneable {
 

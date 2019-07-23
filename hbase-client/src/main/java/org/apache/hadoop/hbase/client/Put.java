@@ -193,6 +193,7 @@ public class Put extends Mutation implements HeapSize {
   /**
    * Add the specified column and value, with the specified timestamp as
    * its version to this Put operation.
+   * 在mutation的成员变量familymap中加入这个新的kv
    * @param family family name
    * @param qualifier column qualifier
    * @param ts version timestamp

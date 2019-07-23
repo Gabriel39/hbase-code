@@ -32,6 +32,9 @@ import org.apache.hadoop.hbase.client.coprocessor.Batch;
  * by {@link org.apache.hadoop.hbase.client.AsyncProcess}.
  * The attributes will be validated by AsyncProcess.
  * It's intended for advanced client applications.
+ *
+ * 对于异步任务的定义，即异步队列中维护的执行任务
+ *
  * @param <T> The type of response from server-side
  */
 @InterfaceAudience.Private
