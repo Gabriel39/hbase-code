@@ -130,6 +130,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
 
     /**
      * Add replica actions to action map by server.
+     * 把所有replica action添加到一个map中
      * @param index Index of the original action.
      * @param actionsByServer The map by server to add it to.
      */
@@ -179,6 +180,8 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
   /**
    * Runnable (that can be submitted to thread pool) that submits MultiAction to a
    * single server. The server call is synchronous, therefore we do it on a thread pool.
+   *
+   * 多个action提交给同一个server执行
    */
   @VisibleForTesting
   final class SingleServerRequestRunnable implements Runnable {
@@ -326,6 +329,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     this.nonceGroup = nonceGroup;
     this.tableName = task.getTableName();
     this.actionsInProgress.set(actions.size());
+    // result为一个object数组，每一个元素代表一个action的执行结果，如果当前task已经有结果了则清空
     if (task.getResults() == null) {
       results = task.getNeedResults() ? new Object[actions.size()] : null;
     } else {
@@ -339,6 +343,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     }
     List<Integer> replicaGetIndices = null;
     boolean hasAnyReplicaGets = false;
+    // replicaGetIndices这个list记录所有是replicaget的action的下标
     if (results != null) {
       // Check to see if any requests might require replica calls.
       // We expect that many requests will consist of all or no multi-replica gets; in such
@@ -382,10 +387,13 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     } else {
       this.replicaGetIndices = null;
     }
+    // callsInProgress是一个set，Collections.newSetFromMap将把信息记录在一个map中，
+    // 这个map的key是set的元素，值是true，也就可以直接通过map找到对应key是否对应true
     this.callsInProgress = !hasAnyReplicaGets ? null :
         Collections.newSetFromMap(
             new ConcurrentHashMap<CancellableRegionServerCallable, Boolean>());
     this.asyncProcess = asyncProcess;
+    // 这个变量用来记录每一个服务器对应的错误
     this.errorsByServer = createServerErrorTracker();
     this.errors = new BatchErrors();
     this.operationTimeout = task.getOperationTimeout();
@@ -497,6 +505,12 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
         Retry.NO_LOCATION_PROBLEM, ex, null);
   }
 
+  /**
+   * 找到这个action对应数据的location
+   * @param action
+   * @param useCache
+   * @return
+   */
   private RegionLocations findAllLocationsOrFail(Action action, boolean useCache) {
     if (action.getAction() == null) throw new IllegalArgumentException("#" + asyncProcess.id +
         ", row cannot be null");
@@ -524,6 +538,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     // We hope most of the time it will be the only item, so we can cut down on threads.
     int actionsRemaining = actionsByServer.size();
     // This iteration is by server (the HRegionLocation comparator is by server portion only).
+    // 遍历每一个服务器对应的action，对于每一个服务器的action创建一组执行器
     for (Map.Entry<ServerName, MultiAction> e : actionsByServer.entrySet()) {
       ServerName server = e.getKey();
       MultiAction multiAction = e.getValue();
@@ -538,6 +553,7 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
       // run all the runnables
       // HBASE-17475: Do not reuse the thread after stack reach a certain depth to prevent stack overflow
       // for now, we use HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER to control the depth
+      // 执行每一个执行器，为了防止栈溢出，并不是所有执行器都交给线程池执行
       for (Runnable runnable : runnables) {
         if ((--actionsRemaining == 0) && reuseThread
             && numAttempt % HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER != 0) {
@@ -569,6 +585,16 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     }
   }
 
+  /**
+   * 返回一个执行多任务的执行器的集合，
+   * 基本逻辑是如果connection中没有统计tracker，说明多个action对应于同一个执行器
+   * 如果有统计tracker，则根据action的backoff对action做一个分组，每个分组对应一个执行器，相当于是一个执行器执行backoff时间相同的action
+   *
+   * @param server
+   * @param multiAction
+   * @param numAttempt
+   * @return
+   */
   private Collection<? extends Runnable> getNewMultiActionRunnable(ServerName server,
                                                                    MultiAction multiAction,
                                                                    int numAttempt) {
@@ -1182,12 +1208,19 @@ class AsyncRequestFutureImpl<CResult> implements AsyncRequestFuture {
     }
   }
 
+  /**
+   * 判断有没有在cutoff之前完成
+   * @param cutoff
+   * @return
+   * @throws InterruptedException
+   */
   private boolean waitUntilDone(long cutoff) throws InterruptedException {
     boolean hasWait = cutoff != Long.MAX_VALUE;
     long lastLog = EnvironmentEdgeManager.currentTime();
     long currentInProgress;
     while (0 != (currentInProgress = actionsInProgress.get())) {
       long now = EnvironmentEdgeManager.currentTime();
+      // 超时未完成直接返回
       if (hasWait && (now * 1000L) > cutoff) {
         return false;
       }

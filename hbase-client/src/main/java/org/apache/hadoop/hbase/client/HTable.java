@@ -113,6 +113,7 @@ public class HTable implements Table {
   private boolean closed = false;
   private final int scannerCaching;
   private final long scannerMaxResultSize;
+  // 这个线程池是由connection传参进来的
   private final ExecutorService pool;  // For Multi & Scan
   private int operationTimeoutMs; // global timeout for each blocking method with retrying rpc
   private final int rpcTimeoutMs; // FIXME we should use this for rpc like batch and checkAndXXX

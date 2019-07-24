@@ -515,6 +515,10 @@ class AsyncProcess {
         this.serverTrackerTimeout, this.numTries);
   }
 
+  // 判断这个get请求是否是replicaget，这里涉及到hbase的一致性模型，hbase默认是强一致性，
+  // 为了保证强一致性，hbase令所有的读写读写请求都由数据所在region的主region进行处理
+  // 而timeline一致性更灵活，他对数据所在region的所有副本都发送读请求，并且接受第一个响应
+  // 当这个第一个响应是由副本region返回时，由client决定是否对这个响应数据进行验证
   static boolean isReplicaGet(Row row) {
     return (row instanceof Get) && (((Get)row).getConsistency() == Consistency.TIMELINE);
   }

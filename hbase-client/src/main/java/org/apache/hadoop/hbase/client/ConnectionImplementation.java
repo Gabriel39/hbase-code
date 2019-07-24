@@ -1034,6 +1034,7 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
 
   /**
    * The record of errors for servers.
+   * 服务器的错误记录，核心就是一个map，记录每一个server对应的错误，根据这些错误记录来尝试重试
    */
   static class ServerErrorTracker {
     // We need a concurrent map here, as we could have multiple threads updating it in parallel.
