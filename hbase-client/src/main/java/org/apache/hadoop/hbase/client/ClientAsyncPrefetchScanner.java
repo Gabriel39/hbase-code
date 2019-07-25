@@ -49,6 +49,12 @@ import org.apache.hadoop.hbase.util.Threads;
  * This class allocates a buffer cache, whose size is a function of both factors.
  * The prefetch is invoked when the cache is half­filled, instead of waiting for it to be empty.
  * This is defined in the method {@link ClientAsyncPrefetchScanner#prefetchCondition()}.
+ *
+ * ClientAsyncPrefetchScanner是一个支持异步prefetch的scanner，
+ * 原理是这个类会启动一个守护线程与当前线程进行交互，每次scanner调用next方法时，会判断cache中是否有数据，
+ * 如果没有数据则自己阻塞并通知守护线程去取数据，守护线程取数据完毕后再通知当前线程可以进行操作了。
+ * 在当前线程从cache中取完数据后还会再判断现在cache中的数据是否满足prefetch的条件（即是否有足够数据），
+ * 如果满足则通知守护线程去取数据
  */
 @InterfaceAudience.Private
 public class ClientAsyncPrefetchScanner extends ClientSimpleScanner {

@@ -291,6 +291,13 @@ public class Result implements CellScannable, CellScanner {
     }
   }
 
+  /**
+   * 二分查找取得对应cell在cell数组中的下标
+   * @param kvs
+   * @param family
+   * @param qualifier
+   * @return
+   */
   protected int binarySearch(final Cell [] kvs,
                              final byte [] family,
                              final byte [] qualifier) {
@@ -498,6 +505,8 @@ public class Result implements CellScannable, CellScanner {
    * <p>
    * Does not clear or flip the buffer.
    *
+   * 相比于上面这个，是把结果放在一个bytebuffer里
+   *
    * @param family family name
    * @param foffset family offset
    * @param flength family length
@@ -624,6 +633,8 @@ public class Result implements CellScannable, CellScanner {
    * Returns a three level Map of the form:
    * <code>Map&amp;family,Map&lt;qualifier,Map&lt;timestamp,value&gt;&gt;&gt;</code>
    * <p>
+   *
+   * 就是把结果的cell数组作为map返回
    * Note: All other map returning methods make use of this map internally.
    * @return map from families to qualifiers to versions
    */
@@ -667,6 +678,7 @@ public class Result implements CellScannable, CellScanner {
    * Returns a two level Map of the form: <code>Map&amp;family,Map&lt;qualifier,value&gt;&gt;</code>
    * <p>
    * The most recent version of each qualifier will be used.
+   * 相比于上一个函数， map少了timestamp级
    * @return map from families to qualifiers and value
    */
   public NavigableMap<byte[], NavigableMap<byte[], byte[]>> getNoVersionMap() {
@@ -695,6 +707,7 @@ public class Result implements CellScannable, CellScanner {
    * Map of qualifiers to values.
    * <p>
    * Returns a Map of the form: <code>Map&lt;qualifier,value&gt;</code>
+   * 返回只有qualifier-》value的map
    * @param family column family to get
    * @return map of qualifiers to values
    */

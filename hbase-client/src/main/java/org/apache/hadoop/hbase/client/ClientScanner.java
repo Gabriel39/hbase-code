@@ -195,6 +195,9 @@ public abstract class ClientScanner extends AbstractClientScanner {
   }
 
   /**
+   * 以下两个方法都是抽象的，需要子类实现，原因是对于reversescan和正向scan，scan的startkey和scan的方向都是不一样的
+   */
+  /**
    * Will be called in moveToNextRegion when currentRegion is null. Abstract because for normal
    * scan, we will start next scan from the endKey of the currentRegion, and for reversed scan, we
    * will start next scan from the startKey of the currentRegion.

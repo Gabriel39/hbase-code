@@ -264,6 +264,7 @@ public class HTable implements Table {
    * Get the corresponding start keys and regions for an arbitrary range of
    * keys.
    * <p>
+   * 输入两个key，输出两个key之间范围所在的所有key和region
    * @param startKey Starting row in range, inclusive
    * @param endKey Ending row in range
    * @param includeEndKey true if endRow is inclusive, false if exclusive
@@ -297,6 +298,7 @@ public class HTable implements Table {
 
   /**
    * The underlying {@link HTable} must not be closed.
+   * 对于scan操作，可以根据isAsyncPrefetch属性值进行不同的操作
    * {@link Table#getScanner(Scan)} has other usage details.
    */
   @Override
@@ -361,6 +363,14 @@ public class HTable implements Table {
     return get(get, get.isCheckExistenceOnly());
   }
 
+    /**
+     * get操作的核心方法，主要涉及两种不同类型的操作，一种是强一致性下的get，这时候会把rpc请求发给primary region
+     * 另一种是timeline consistency，这时候会把rpc发给所有replica region
+     * @param get
+     * @param checkExistenceOnly 默认为false，传入true时只验证是否有结果而不传真正的结果
+     * @return
+     * @throws IOException
+     */
   private Result get(Get get, final boolean checkExistenceOnly) throws IOException {
     // if we are changing settings to the get, clone it.
     if (get.isCheckExistenceOnly() != checkExistenceOnly || get.getConsistency() == null) {
@@ -396,6 +406,12 @@ public class HTable implements Table {
     return callable.call(operationTimeoutMs);
   }
 
+    /**
+     * 传入get的列表的核心是通过batch进行处理
+     * @param gets The objects that specify what data to fetch and from which rows.
+     * @return
+     * @throws IOException
+     */
   @Override
   public Result[] get(List<Get> gets) throws IOException {
     if (gets.size() == 1) {
@@ -417,6 +433,16 @@ public class HTable implements Table {
     }
   }
 
+    /**
+     * 判断这个action列表中的操作类型
+     * @param actions list of Get, Put, Delete, Increment, Append, RowMutations.
+     * @param results Empty Object[], same size as actions. Provides access to partial
+     *                results, in case an exception is thrown. A null in the result array means that
+     *                the call for that action failed, even after retries. The order of the objects
+     *                in the results array corresponds to the order of actions in the request list.
+     * @throws InterruptedException
+     * @throws IOException
+     */
   @Override
   public void batch(final List<? extends Row> actions, final Object[] results)
       throws InterruptedException, IOException {
@@ -439,6 +465,15 @@ public class HTable implements Table {
     batch(actions, results, rpcTimeout);
   }
 
+    /**
+     * batch方法的核心
+     * 底层通过一个AsyncProcessTask对每一个action进行异步执行
+     * @param actions
+     * @param results
+     * @param rpcTimeout
+     * @throws InterruptedException
+     * @throws IOException
+     */
   public void batch(final List<? extends Row> actions, final Object[] results, int rpcTimeout)
       throws InterruptedException, IOException {
     AsyncProcessTask task = AsyncProcessTask.newBuilder()
@@ -457,6 +492,15 @@ public class HTable implements Table {
     }
   }
 
+    /**
+     * 加入callback的batch操作
+     * @param actions
+     * @param results
+     * @param callback
+     * @param <R>
+     * @throws IOException
+     * @throws InterruptedException
+     */
   @Override
   public <R> void batchCallback(
     final List<? extends Row> actions, final Object[] results, final Batch.Callback<R> callback)
@@ -504,6 +548,14 @@ public class HTable implements Table {
         .callWithRetries(callable, this.operationTimeoutMs);
   }
 
+    /**
+     * 批量删除，会在传入的delete列表中保留删除失败的元素
+     * @param deletes List of things to delete. The input list gets modified by this
+     * method. All successfully applied {@link Delete}s in the list are removed (in particular it
+     * gets re-ordered, so the order in which the elements are inserted in the list gives no
+     * guarantee as to the order in which the {@link Delete}s are executed).
+     * @throws IOException
+     */
   @Override
   public void delete(final List<Delete> deletes)
   throws IOException {
@@ -557,6 +609,11 @@ public class HTable implements Table {
     }
   }
 
+    /**
+     * 提交mutations
+     * @param rm object that specifies the set of mutations to perform atomically
+     * @throws IOException
+     */
   @Override
   public void mutateRow(final RowMutations rm) throws IOException {
     CancellableRegionServerCallable<MultiResponse> callable =
@@ -598,6 +655,13 @@ public class HTable implements Table {
     }
   }
 
+    /**
+     * 对某一行进行append操作
+     * @param append object that specifies the columns and amounts to be used
+     *                  for the increment operations
+     * @return
+     * @throws IOException
+     */
   @Override
   public Result append(final Append append) throws IOException {
     checkHasFamilies(append);
@@ -617,6 +681,13 @@ public class HTable implements Table {
         callWithRetries(callable, this.operationTimeoutMs);
   }
 
+    /**
+     * 执行increment操作，increment和append都是保证原子性的
+     * @param increment object that specifies the columns and amounts to be used
+     *                  for the increment operations
+     * @return
+     * @throws IOException
+     */
   @Override
   public Result increment(final Increment increment) throws IOException {
     checkHasFamilies(increment);
