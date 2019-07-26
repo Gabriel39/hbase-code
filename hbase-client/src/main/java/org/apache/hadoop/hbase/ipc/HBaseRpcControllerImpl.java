@@ -47,6 +47,9 @@ public class HBaseRpcControllerImpl implements HBaseRpcController {
 
   private boolean cancelled = false;
 
+  /**
+   * 存放rpc调用的结果，当rpc完成时回返回Object类型的响应信息
+   */
   private final List<RpcCallback<Object>> cancellationCbs = new ArrayList<>();
 
   private IOException exception;
@@ -63,6 +66,8 @@ public class HBaseRpcControllerImpl implements HBaseRpcController {
    * set on response with the result. We use this lowest common denominator access to Cells because
    * sometimes the scanner is backed by a List of Cells and other times, it is backed by an encoded
    * block that implements CellScanner.
+   *
+   * 存放cell，可以是在调用时传入的cell（比如put操作），也可以是rpc结果返回的cell（比如scan操作）
    */
   private CellScanner cellScanner;
 

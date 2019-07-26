@@ -850,6 +850,18 @@ public class HTable implements Table {
     return new CheckAndMutateBuilderImpl(row, family);
   }
 
+  /**
+   * 对某一行进行批量写入，rowmutations保证了对于某一行的批量写入的原子性
+   * @param row
+   * @param family
+   * @param qualifier
+   * @param opName
+   * @param value
+   * @param timeRange
+   * @param rm
+   * @return
+   * @throws IOException
+   */
   private boolean doCheckAndMutate(final byte[] row, final byte[] family, final byte[] qualifier,
     final String opName, final byte[] value, final TimeRange timeRange, final RowMutations rm)
     throws IOException {

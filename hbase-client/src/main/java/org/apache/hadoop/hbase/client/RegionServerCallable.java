@@ -65,6 +65,8 @@ public abstract class RegionServerCallable<T, S> implements RetryingCallable<T> 
    * This is 99% of the time a HBaseRpcController but also used doing Coprocessor Endpoints and in
    * this case, it is a ServerRpcControllable which is not a HBaseRpcController.
    * Can be null!
+   *
+   * 这个rpcController在通常情况下是HBaseRpcController
    */
   protected final RpcController rpcController;
   private int priority = HConstants.NORMAL_QOS;
@@ -105,6 +107,8 @@ public abstract class RegionServerCallable<T, S> implements RetryingCallable<T> 
   /**
    * Override that changes call Exception from {@link Exception} to {@link IOException}.
    * Also does set up of the rpcController.
+   *
+   * 调用rpc，如果RpcController是一个SHADED的RpcController，则要进行config操作
    */
   @Override
   public T call(int callTimeout) throws IOException {
@@ -147,6 +151,8 @@ public abstract class RegionServerCallable<T, S> implements RetryingCallable<T> 
    * CellScanner that the HBaseRpcController is carrying. Do it up here in this Callable
    * so we don't have to scatter ugly instanceof tests around the codebase. Will return null
    * if called in a Coproccessor Endpoint context. Should never happen.
+   *
+   * 返回HBaseRpcController中的cellscanner
    */
   protected CellScanner getRpcControllerCellScanner() {
     return (getRpcController() != null && getRpcController() instanceof HBaseRpcController)?
@@ -212,6 +218,10 @@ public abstract class RegionServerCallable<T, S> implements RetryingCallable<T> 
     return this.location.getRegionInfo();
   }
 
+  /**
+   * @param reload Set this to true if need to requery locations
+   * @throws IOException
+   */
   @Override
   public void prepare(final boolean reload) throws IOException {
     // check table state if this is a retry

@@ -30,6 +30,8 @@ import org.apache.yetus.audience.InterfaceAudience;
  * {@link java.util.concurrent.Future}-like {@link BlockingRpcCallback#get()} method, which
  * will block util the instance's {@link BlockingRpcCallback#run(Object)} method has been called.
  * {@code R} is the RPC response type that will be passed to the {@link #run(Object)} method.
+ *
+ * 阻塞的rpc callback，类似于future，调用get方法会在得到rpc响应之前阻塞，响应之后返回该结果
  */
 @InterfaceAudience.Private
 public class BlockingRpcCallback<R> implements RpcCallback<R> {
