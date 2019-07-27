@@ -28,6 +28,9 @@ import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
  * A RegionServerCallable set to use the Client protocol.
  * Also includes some utility methods so can hide protobuf references here rather than have them
  * sprinkled about the code base.
+ *
+ * 客户端的rpc callable，使用客户端协议的BlockingInterface
+ * 这个callable的rpc操作底层全部是由BlockingInterface完成，
  * @param <T>
  */
 @InterfaceAudience.Private

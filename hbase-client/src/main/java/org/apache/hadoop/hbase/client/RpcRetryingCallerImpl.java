@@ -102,6 +102,7 @@ public class RpcRetryingCallerImpl<T> implements RpcRetryingCaller<T> {
       long expectedSleep;
       try {
         // bad cache entries are cleared in the call to RetryingCallable#throwable() in catch block
+        // 如果不是第一次rpc，都需要进行reload，reload的操作其实核心就是为这个callable设置stub
         callable.prepare(tries != 0);
         interceptor.intercept(context.prepare(callable, tries));
         return callable.call(getTimeout(callTimeout));

@@ -115,6 +115,9 @@ public class HBaseRpcControllerImpl implements HBaseRpcController {
     return priority < 0 ? HConstants.NORMAL_QOS : priority;
   }
 
+  /**
+   * 在重用一个rpcController时调用这个重置方法
+   */
   @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "IS2_INCONSISTENT_SYNC",
       justification = "The only possible race method is startCancel")
   @Override
@@ -218,6 +221,10 @@ public class HBaseRpcControllerImpl implements HBaseRpcController {
     this.cellScanner = cellScanner;
   }
 
+  /**
+   * 客户端外部调用这个方法用来取消这个rpc，取消这个rpc可以理解为发生异常而中止这个rpc
+   * 所以把callback结果全部以null传递给rpc callable
+   */
   @Override
   public void startCancel() {
     // As said above in the comment of reset, the cancellationCbs maybe cleared by reset, so we need
@@ -236,6 +243,12 @@ public class HBaseRpcControllerImpl implements HBaseRpcController {
     }
   }
 
+  /**
+   * 客户端通知取消，把rpc callback的状态传给action，如果没有取消则把callback放回rpc的callback结果中
+   * @param callback
+   * @param action
+   * @throws IOException
+   */
   @Override
   public synchronized void notifyOnCancel(RpcCallback<Object> callback, CancellationCallback action)
       throws IOException {
