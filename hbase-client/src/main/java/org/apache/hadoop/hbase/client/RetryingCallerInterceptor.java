@@ -45,6 +45,8 @@ import org.apache.yetus.audience.InterfaceAudience;
  * 
  * The {@link RetryingCallerInterceptor} also acts as a factory
  * for getting a new {@link RetryingCallerInterceptorContext}.
+ *
+ * 通过实现这个类可以给RpcRetryingCaller加一层拦截器，在客户端调用get等操作的时候加入额外的逻辑
  * 
  */
 

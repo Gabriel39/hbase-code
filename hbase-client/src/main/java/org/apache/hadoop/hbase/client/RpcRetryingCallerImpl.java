@@ -49,6 +49,8 @@ import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
  * This object has a state. It should not be used by in parallel by different threads.
  * Reusing it is possible however, even between multiple threads. However, the user will
  *  have to manage the synchronization on its side: there is no synchronization inside the class.
+ *
+ *  rpc调用者，在实现callWithRetries的方法中很关键的是加入了拦截器的逻辑
  */
 @InterfaceAudience.Private
 public class RpcRetryingCallerImpl<T> implements RpcRetryingCaller<T> {
@@ -104,6 +106,7 @@ public class RpcRetryingCallerImpl<T> implements RpcRetryingCaller<T> {
         // bad cache entries are cleared in the call to RetryingCallable#throwable() in catch block
         // 如果不是第一次rpc，都需要进行reload，reload的操作其实核心就是为这个callable设置stub
         callable.prepare(tries != 0);
+        // 这里加的拦截器是为了实现retry的逻辑，具体见拦截器的实现
         interceptor.intercept(context.prepare(callable, tries));
         return callable.call(getTimeout(callTimeout));
       } catch (PreemptiveFastFailException e) {

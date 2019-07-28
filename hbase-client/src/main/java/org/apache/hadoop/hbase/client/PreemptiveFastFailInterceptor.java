@@ -62,6 +62,11 @@ import org.apache.hadoop.ipc.RemoteException;
  * where the regionserver is down. He can either discard the requests and send a nack upstream
  * faster or have an application level retry or buffer the requests up so as to send them down to
  * hbase later.
+ *
+ * 这个拦截器的核心作用是实现抢占式fast fail。具体来说，当多个客户端对同一个region发出请求时，如果这个region挂掉，
+ * 那么所有的客户端将会启动大量线程进行retry，这就会导致许多类似线程饿死的问题。这个类用于就是解决这个问题，
+ * 它的思路是当一个线程出现连接问题时，其他线程将会收到PreemptiveFastFailException从而使其他线程继续发送后面的请求，
+ * 而不是不断retry当前这个请求
  */
 @InterfaceAudience.Private
 class PreemptiveFastFailInterceptor extends RetryingCallerInterceptor {
@@ -75,6 +80,7 @@ class PreemptiveFastFailInterceptor extends RetryingCallerInterceptor {
 
   // Keeps track of failures when we cannot talk to a server. Helps in
   // fast failing clients if the server is down for a long time.
+  // 记录server对应的错误信息
   protected final ConcurrentMap<ServerName, FailureInfo> repeatedFailuresMap = new ConcurrentHashMap<>();
 
   // We populate repeatedFailuresMap every time there is a failure. So, to
@@ -107,6 +113,8 @@ class PreemptiveFastFailInterceptor extends RetryingCallerInterceptor {
     if (inFastFailMode(context.getServer()) && !currentThreadInFastFailMode()) {
       // In Fast-fail mode, all but one thread will fast fail. Check
       // if we are that one chosen thread.
+      // 如果当前请求的服务器处于fast fail模式，并且当前线程不处于fast fail模式
+      // 要从众多连接这个服务器的客户端中选取一个去尝试retry
       context.setRetryDespiteFastFailMode(shouldRetryInspiteOfFastFail(context
           .getFailureInfo()));
       if (!context.isRetryDespiteFastFailMode()) { // we don't have to retry
@@ -248,6 +256,9 @@ class PreemptiveFastFailInterceptor extends RetryingCallerInterceptor {
    * The idea here is that we want just one client thread to be actively trying
    * to reconnect, while all the other threads trying to reach the server will
    * short circuit.
+   *
+   * 当一个server down掉的时候，需要保持有一个client去进行重试，这里使用一个FailureInfo的原子类
+   * 让多个客户端线程去抢占，可以保证只有一个线程能够抢占成功，那么就使用这个线程去进行重试
    *
    * @param fInfo
    * @return true if the client should try to connect to the server.

@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Factory to create an {@link RpcRetryingCaller}
+ *
+ * 创建RpcRetryingCaller的工厂类
  */
 @InterfaceAudience.Private
 public class RpcRetryingCallerFactory {
@@ -80,6 +82,7 @@ public class RpcRetryingCallerFactory {
 
   /**
    * Create a new RetryingCaller with specific rpc timeout.
+   * 新建一个rpcCaller，范型T表示返回结果
    */
   public <T> RpcRetryingCaller<T> newCaller(int rpcTimeout) {
     // We store the values in the factory instance. This way, constructing new objects

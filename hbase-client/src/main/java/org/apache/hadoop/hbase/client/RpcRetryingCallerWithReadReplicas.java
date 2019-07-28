@@ -51,6 +51,8 @@ import static org.apache.hadoop.hbase.HConstants.PRIORITY_UNSET;
  * timeout. If the timeout is reached, it calls all the secondary replicas, and returns
  * the first answer. If the answer comes from one of the secondary replica, it will
  * be marked as stale.
+ *
+ * 针对timeline consistency的get请求的rpccaller
  */
 @InterfaceAudience.Private
 public class RpcRetryingCallerWithReadReplicas {
