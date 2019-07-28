@@ -81,6 +81,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  *
  * 这个类维护一个异步请求队列，默认队列最大100，对于每一个请求，如果失败则会进行重试
  * 在重试过程中，重试的时间间隔会线性增大
+ * 通过future机制跟踪每一个request的状态
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -283,7 +284,7 @@ class AsyncProcess {
         checker.reset();
       }
       Iterator<? extends Row> it = rows.iterator();
-      // 遍历这个任务中提交的所有 T extends Row
+      // 遍历这个任务中提交的所有 T extends Row，直到不满足checker的第一个row跳出循环
       while (it.hasNext()) {
         Row r = it.next();
         HRegionLocation loc;
@@ -299,7 +300,7 @@ class AsyncProcess {
             throw new IOException("#" + id + ", no location found, aborting submit for"
                 + " tableName=" + tableName + " rowkey=" + Bytes.toStringBinary(r.getRow()));
           }
-          // 获取众多region中的其中一个
+          // 获取众多region中的primary replica
           loc = locs.getDefaultRegionLocation();
         } catch (IOException ex) {
           // 如果寻找location失败，则记录报错信息并跳出循环
